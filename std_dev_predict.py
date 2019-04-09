@@ -3,9 +3,14 @@
 
 import numpy as np
 
+# 0. Initialize filenames
+averages_filename = "averages.txt"
+data_filename = "full_matrix.txt"
+pred_filename = "predictions.txt"
+
 # 1. Read in average movie data -> averages
 
-avg_file = open("averages.txt", "r")
+avg_file = open(averages_filename, "r")
 averages = []
 for avg in avg_file:
 	averages.append(float(avg))
@@ -16,7 +21,7 @@ std_devs = []
 # 2. Compute user standard deviations -> std_devs
 
 # Read full data matrix
-data_file = open("full_matrix.txt", "r")
+data_file = open(data_filename, "r")
 for line in data_file:
 	ratings = [float(x) for x in line.split()]	# get list of all ratings
 	devs = [] 									# deviations from average
@@ -33,8 +38,8 @@ for line in data_file:
 
 # 3. Predict unknown ratings -> "predictions.txt"
 
-data_file = open("full_matrix.txt", "r")
-predictions = open("predictions.txt", "w")
+data_file = open(data_filename, "r")
+predictions = open(pred_filename, "w")
 user = 0										# index of user
 for line in data_file:
 	ratings = [float(x) for x in line.split()]	
