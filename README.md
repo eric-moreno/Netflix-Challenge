@@ -6,4 +6,5 @@ averages_method.ipynb
       -- integer : rating
       -- 0 : no data or validation data
   
-  
+svd_scratch
+  - off-shelf SVD model
