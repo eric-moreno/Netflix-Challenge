@@ -25,21 +25,23 @@ for avg in averages:
 	movie_devs.append(avg - avg_rating)
 
 # 3. Compute user average ratings -> user_devs
-#	 user_devs[user_index] = [dev_1, dev_2, dev_3, etc.]
 
 user_devs = [] 	# 2d array of ratings of users, sorted by user index
-len = 0
+user_movs = []  # 2d array of movies rated by user (rows: user_idx, cols: movie_idx's)
+user = 0		# index of current user in file
 # Read full data matrix
 data_file = open(data_filename, "r")
 for line in data_file:
 	vals = [int(x) for x in line.split()]		# get list of all ratings
 	u, m, r = vals[0], vals[1], vals[2]			# user, movie, rating
-	
-	if (len < u+1):
+
+	if (user < u+1):
 		user_devs.append([(r - averages[m])])
-		len += 1
+		user_movs.append([m])
+		user = user + 1
 	else:
 		user_devs[u].append(r - averages[m])
+		user_movs[u].append(m)
 
 user_devs = list(map(lambda arr: np.average(np.array(arr)), user_devs))
 
@@ -48,8 +50,20 @@ user_devs = list(map(lambda arr: np.average(np.array(arr)), user_devs))
 data_file = open(data_filename, "r")
 predictions = open(pred_filename, "w")
 
-# ******* TO DO ********
+usr_idx = -1
+for user in user_movs:
+	usr_idx = usr_idx + 1
+	mov_idx = -1
+	for avg in averages:
+		mov_idx = mov_idx + 1
+		
+		if mov_idx not in user:
+			pred = avg_rating + user_devs[usr_idx] + movie_devs[mov_idx]
+			pred = min(5, pred)	# cap at 5
+			pred = max(0, pred) # cap at 0
+			predictions.write("%d %d %.2f \n" % (usr_idx, mov_idx, pred))
 	
+
 # close all files
 data_file.close()
 avg_file.close()
