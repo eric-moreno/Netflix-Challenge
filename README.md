@@ -1,6 +1,15 @@
 # chardsdisciples
 156b
 
+bellkor_baseline.py *** UNFINISHED ***
+  - computes predictions of unknown movie ratings using the bellkor baseline formulat
+  - outputs to file "predictions.txt"
+  
+
+avg_ratings.py
+  - computes average ratings per movie and outputs them to a file "averages.txt"
+  - helper to bellkor_baseline.py
+
 std_dev_predicty.py
   - method: prediction = (avg_movie_rating) + (user_std_dev)
   - generates a new text file "predictions.txt" with the unknown movie values of the training set predicted.
