@@ -1,9 +1,10 @@
 # chardsdisciples
 156b
 
-bellkor_baseline.py *** UNFINISHED ***
-  - computes predictions of unknown movie ratings using the bellkor baseline formulat
-  - outputs to file "predictions.txt"
+bellkor_baseline.py
+  - computes predictions of unknown movie ratings using the bellkor baseline formula
+      -- also computes: avg movie deviations, avg user deviations
+  - outputs predictions to file "predictions.txt" (does not include training data values)
   
 
 avg_ratings.py
