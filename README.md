@@ -29,4 +29,4 @@ averages_method.ipynb
       -- 0 : no data or validation data
   
 svd_scratch
-  - off-shelf SVD model
+  - SVD implemented from scratch, no external package used.
