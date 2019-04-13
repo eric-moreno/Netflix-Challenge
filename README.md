@@ -9,9 +9,9 @@ bellkor_baseline.py
 avg_ratings.py
   - computes average ratings and average deviations for all movies
   - stored in 2d np-matrix "avg_dev.npy"
-      -- note : first row is [overall_average_movie_rating (u), 0.0]
-      -- note : other rows are [average rating of movie, average deviation of movie (b_i)]
-          -- to access movie i info, access avg_dev[i+1]
+      - note : first row is [overall_average_movie_rating (u), 0.0]
+      - note : other rows are [average rating of movie, average deviation of movie (b_i)]
+          - to access movie i info, access avg_dev[i+1]
   - helper to bellkor_baseline.py
 
 std_dev_predicty.py
