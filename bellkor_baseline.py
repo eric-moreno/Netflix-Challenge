@@ -52,7 +52,7 @@ predictions = [] # matrix: user_index, movie_index, predicted_rating
 usr_idx = -1
 for movs in user_movs:
 	usr_idx = usr_idx + 1
-	mov_idx = -1
+	mov_idx = 0 # skip first row of avg_dev
 	for [avg, b_i] in avg_dev:
 		mov_idx = mov_idx + 1
 		# if user has not rated movie
