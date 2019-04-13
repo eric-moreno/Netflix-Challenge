@@ -2,13 +2,16 @@
 156b
 
 bellkor_baseline.py
-  - computes predictions of unknown movie ratings using the bellkor baseline formula
-      -- also computes: avg movie deviations, avg user deviations
-  - outputs predictions to file "predictions.txt" (does not include training data values)
+  - computes predictions of unknown movie ratings using the bellkor baseline formula: b = u + b_u + b_i
+  - outputs predictions to 2d np-matrix "predictions.npy" (does not include training data values)
   
 
 avg_ratings.py
-  - computes average ratings per movie and outputs them to a file "averages.txt"
+  - computes average ratings and average deviations for all movies
+  - stored in 2d np-matrix "avg_dev.npy"
+      -- note : first row is [overall_average_movie_rating (u), 0.0]
+      -- note : other rows are [average rating of movie, average deviation of movie (b_i)]
+          -- to access movie i info, access avg_dev[i+1]
   - helper to bellkor_baseline.py
 
 std_dev_predicty.py
