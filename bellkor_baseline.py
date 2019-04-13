@@ -13,9 +13,10 @@ pred_filename = "predictions.npy"
 avg_dev = np.load('avg_dev.npy')
 print(avg_dev)
 
+u = avg_dev[0][0]  # Get overall movie average
+avg_dev = np.delete(avg_dev, 0, 0) # remove top row
 
 # 2. Compute user average rating deviations -> user_devs
-u = avg_dev[0][0]  # Get overall movie average
 user_ratings = [] 	# 2d array of (r - u - b_1) per user
 user_movs = []  # movies rated by user (rows: user_idx, cols: movie_idx's)
 user = 0		# index of current user in file
@@ -52,12 +53,11 @@ predictions = [] # matrix: user_index, movie_index, predicted_rating
 usr_idx = -1
 for movs in user_movs:
 	usr_idx = usr_idx + 1
-	mov_idx = 0 # skip first row of avg_dev
+	mov_idx = -1 
 	for [avg, b_i] in avg_dev:
 		mov_idx = mov_idx + 1
-		# if user has not rated movie
 		if mov_idx not in movs:
-			rating = u + b_u[mov_idx] + b_i
+			rating = u + b_u[usr_idx] + b_i
 			predictions.append([usr_idx, mov_idx, rating])
 
 print(predictions)

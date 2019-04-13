@@ -31,17 +31,18 @@ movie_avg = np.average(np.array(averages))
 # 	- First row contains overall movie average rating
 # 	- Consequent Row Format: [average, deviation]
 matrix = [[movie_avg, 0.0]]	
-
+i = 0 # index of movie
 for r in ratings: 	# compute standard deviation, b_i = Sum(r - u) / (lambda1 - |R|)
 	r = np.array(r) # lambda1 = 25 (bellkor paper)
 	sum = 0.0
 	for x in r:
 		sum = sum + (x - movie_avg)
 	dev = sum/(25 + np.size(r))
-	matrix.append([avg, dev])
+	matrix.append([averages[i], dev])
+	i = i + 1
 
 np_matrix = np.array(matrix)
 np.save('avg_dev.npy', np_matrix) # Store matrix in avg_dev.npy
-
+print(matrix)
 # Close data file
 data_file.close()
