@@ -4,6 +4,7 @@
 bellkor_baseline.py
   - computes predictions of unknown movie ratings using the bellkor baseline formula: b = u + b_u + b_i
   - outputs predictions to 2d np-matrix "predictions.npy" (does not include training data values)
+      - format: [user_index, movie_index, predicted_rating]
   
 
 avg_ratings.py
