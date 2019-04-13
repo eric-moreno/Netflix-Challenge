@@ -1,18 +1,17 @@
-# Computes the average rating of each movie in full_matrix.txt
+# Creates avg_dev.npy 
+# 	- Computes the average rating and deviation of each movie in full_matrix.txt
 
 import numpy as np
 
-data_filename = "full_matrix.txt"
-avg_filename = "averages.txt"
-
 # Read full data matrix
+data_filename = "full_matrix.txt"
 data_file = open(data_filename, "r")
 
-ratings = [] 	# 2d array of ratings of movies, sorted by index
+# Get all ratings of each movie
+ratings = [] 	
 len = 0
-
 for line in data_file:
-	vals = [int(x) for x in line.split()]		# get list of all ratings
+	vals = [int(x) for x in line.split()]		
 	u, m, r = vals[0], vals[1], vals[2]			# user, movie, rating
 	if (len < m+1):
 		ratings.append([r])
@@ -20,13 +19,29 @@ for line in data_file:
 	else:
 		ratings[m].append(r)
 
-averages = list(map(lambda arr: np.average(np.array(arr)), ratings))
+# Compute averages and regularized deviations 
+averages = []
+for r in ratings: # compute average rating
+	r = np.array(r)		
+	avg = np.average(r) 
+	averages.append(avg)
 
-# Write averages to avg_filename file
-avg_file = open(avg_filename, "w")
-for avg in averages:
-	avg_file.write("%.4f\n" % avg)
+movie_avg = np.average(np.array(averages)) 
+# Construct Matrix
+# 	- First row contains overall movie average rating
+# 	- Consequent Row Format: [average, deviation]
+matrix = [[movie_avg, 0.0]]	
 
-# Close open files
+for r in ratings: 	# compute standard deviation, b_i = Sum(r - u) / (lambda1 - |R|)
+	r = np.array(r) # lambda1 = 25 (bellkor paper)
+	sum = 0.0
+	for x in r:
+		sum = sum + (x - movie_avg)
+	dev = sum/(25 + np.size(r))
+	matrix.append([avg, dev])
+
+np_matrix = np.array(matrix)
+np.save('avg_dev.npy', np_matrix) # Store matrix in avg_dev.npy
+
+# Close data file
 data_file.close()
-avg_file.close()

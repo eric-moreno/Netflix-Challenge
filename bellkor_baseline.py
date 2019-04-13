@@ -6,65 +6,62 @@
 import numpy as np
 
 # 0. Initialize filenames
-averages_filename = "averages.txt"
 data_filename = "full_matrix.txt"
-pred_filename = "predictions.txt"
+pred_filename = "predictions.npy"
 
-# 1. Read in average movie data -> averages
+# 1. Load movie data matrix (averages and std_deviations)
+avg_dev = np.load('avg_dev.npy')
+print(avg_dev)
 
-avg_file = open(averages_filename, "r")
-averages = []
-for avg in avg_file:
-	averages.append(float(avg))
 
-avg_rating = np.mean(averages)
-
-# 2. Compute each movie's standard deviation from average rating
-movie_devs = []
-for avg in averages:
-	movie_devs.append(avg - avg_rating)
-
-# 3. Compute user average ratings -> user_devs
-
-user_devs = [] 	# 2d array of ratings of users, sorted by user index
-user_movs = []  # 2d array of movies rated by user (rows: user_idx, cols: movie_idx's)
+# 2. Compute user average rating deviations -> user_devs
+u = avg_dev[0][0]  # Get overall movie average
+user_ratings = [] 	# 2d array of (r - u - b_1) per user
+user_movs = []  # movies rated by user (rows: user_idx, cols: movie_idx's)
 user = 0		# index of current user in file
-# Read full data matrix
+
+# Fill in user_devs and user_movs
 data_file = open(data_filename, "r")
 for line in data_file:
 	vals = [int(x) for x in line.split()]		# get list of all ratings
 	u, m, r = vals[0], vals[1], vals[2]			# user, movie, rating
 
 	if (user < u+1):
-		user_devs.append([(r - averages[m])])
+		user_ratings.append([(r - u - avg_dev[m][1])])
 		user_movs.append([m])
 		user = user + 1
 	else:
-		user_devs[u].append(r - averages[m])
+		user_ratings[u].append(r - u - avg_dev[m][1])
 		user_movs[u].append(m)
 
-user_devs = list(map(lambda arr: np.average(np.array(arr)), user_devs))
-
-# 4. Predict unknown ratings -> "predictions.txt"
+# Compute regularized user deviations: b_u = sum(r - u - b_i) / (lambda2 - R)
+# lambda2 = 10 (bellkor paper)
+b_u = []
+for user in user_ratings:
+	arr = np.array(user)
+	R = np.size(arr)	# total number of ratings
+	sum = np.sum(arr)  	# sum of user's (r - u - b_1) 
+	b = sum / (10 - R)
+	b_u.append(b)
+		
+# 4. Predict unknown ratings -> "predictions.npy"
 
 data_file = open(data_filename, "r")
-predictions = open(pred_filename, "w")
+predictions = [] # matrix: user_index, movie_index, predicted_rating
 
 usr_idx = -1
-for user in user_movs:
+for movs in user_movs:
 	usr_idx = usr_idx + 1
 	mov_idx = -1
-	for avg in averages:
+	for [avg, b_i] in avg_dev:
 		mov_idx = mov_idx + 1
-		
-		if mov_idx not in user:
-			pred = avg_rating + user_devs[usr_idx] + movie_devs[mov_idx]
-			pred = min(5, pred)	# cap at 5
-			pred = max(0, pred) # cap at 0
-			predictions.write("%d %d %.2f \n" % (usr_idx, mov_idx, pred))
-	
+		# if user has not rated movie
+		if mov_idx not in movs:
+			rating = u + b_u[mov_idx] + b_i
+			predictions.append([usr_idx, mov_idx, rating])
 
+print(predictions)
+# save predictions matrix
+np.save("predictions.npy", predictions)
 # close all files
 data_file.close()
-avg_file.close()
-predictions.close()
