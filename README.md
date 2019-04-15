@@ -1,6 +1,20 @@
 # chardsdisciples
 156b
 
+bellkor_baseline.py
+  - computes predictions of unknown movie ratings using the bellkor baseline formula: b = u + b_u + b_i
+  - outputs predictions to 2d np-matrix "predictions.npy" (does not include training data values)
+      - format: [user_index, movie_index, predicted_rating]
+  
+
+avg_ratings.py
+  - computes average ratings and average deviations for all movies
+  - stored in 2d np-matrix "avg_dev.npy"
+      - note : first row is [overall_average_movie_rating (u), 0.0]
+      - note : other rows are [average rating of movie, average deviation of movie (b_i)]
+          - to access movie i info, access avg_dev[i+1]
+  - helper to bellkor_baseline.py
+
 std_dev_predicty.py
   - method: prediction = (avg_movie_rating) + (user_std_dev)
   - generates a new text file "predictions.txt" with the unknown movie values of the training set predicted.
@@ -19,4 +33,4 @@ averages_method.ipynb
       -- 0 : no data or validation data
   
 svd_scratch
-  - off-shelf SVD model
+  - SVD implemented from scratch, no external package used.
