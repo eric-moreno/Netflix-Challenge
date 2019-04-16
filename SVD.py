@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from numba import jit
 NUM_USERS = 458293
 NUM_MOVIES = 17770
@@ -32,7 +33,7 @@ def grad_V(Vj, Yij, Ui, reg, eta):
 @jit
 def get_err(U, V, Y, reg=0.0):
     """
-    Takes as input a matrix Y of triples (i, j, time Y_ij) where i is the index of a user,
+    Takes as input a matrix Y of (i, j, time Y_ij) where i is the index of a user,
     j is the index of a movie, and Y_ij is user i's rating of movie j and
     user/movie matrices U and V.
 
@@ -43,12 +44,15 @@ def get_err(U, V, Y, reg=0.0):
 
     # Summation of square error terms
     error = 0
-    for i, j, time, y_ij in Y:
+    for row in Y:
+        i = row[0] 
+        j = row[1] 
+        y_ij = row[3] 
         error += (y_ij - np.matmul(U[i-1].T, V[j-1]))**2
     return regularized + 0.5 * error
 
 @jit
-def train_model(M, N, K, eta, reg, Y, eps=0.0001, max_epochs=3000):
+def train_model(M, N, K, eta, reg, Y, eps=0.0001, max_epochs=1000):
     """
     Given a training data matrix Y containing rows (i, j, time, Y_ij)
     where Y_ij is user i's rating on movie j, learns an
@@ -71,14 +75,14 @@ def train_model(M, N, K, eta, reg, Y, eps=0.0001, max_epochs=3000):
 
     # Keep track of epochs
     epochs = 0
-
+    
+    # TOO SLOW RN
     # Keep track of errors for first epoch and last epoch
-    first_improv = get_err(U, V, Y)
-    last_error = first_improv
+    #first_improv = get_err(U, V, Y)
+    #last_error = first_improv
 
     while epochs < max_epochs:
-        if epochs % 100 == 0:
-            print("epoch:", epochs)
+        print("epoch:", epochs)
             
         np.random.shuffle(indices)
         epochs += 1
@@ -91,26 +95,28 @@ def train_model(M, N, K, eta, reg, Y, eps=0.0001, max_epochs=3000):
             U[i-1] = U[i-1] - grad_U(U[i-1], y_ij, V[j-1].T, reg, eta)
             V[j-1] = V[j-1] - grad_V(V[j-1].T, y_ij, U[i-1], reg, eta)
 
-        curr_error = get_err(U, V, Y)        
-        if epochs == 1:
-            first_improv -= curr_error
+        #curr_error = get_err(U, V, Y)        
+        #if epochs == 1:
+            #first_improv -= curr_error
 
         # Check improvement condition
-        elif (last_error - curr_error)/first_improv < eps:
-            break
-        last_error = curr_error 
+        #elif (last_error - curr_error)/first_improv < eps:
+            #break
+        #last_error = curr_error 
 
     # Calculate error
-    error = get_err(U, V, Y)
-    return (U, V, error)
+    #error = get_err(U, V, Y)
+    return (U, V)#, error)
 
 @jit
 def generate_predictions(U, V, qual):
     '''Given training output decomposition U and V, output predictions
        for qual submission set.'''
     
-    f= open("averages.dta","w+")
-    for i, j, time, y_ij in qual:
+    f= open("predictions.dta","w+")
+    for row in qual:
+        i = row[0]
+        j = row[1]
         prediction = np.matmul(U[i-1].T, V[j-1]) 
         string = str('%.3f'%(prediction)) + '\n'
         f.write(string)
@@ -120,25 +126,31 @@ def generate_predictions(U, V, qual):
 @jit
 def main():
     # Load dataset as matrix of tuples (userid, movieid, time, rating)
-    dataset = np.loadtxt("all.dta").astype(int) 
+    print('loading dataset')
+    dataset = pd.read_table('all.dta', delim_whitespace=True, header=None)
+    data = np.array(dataset)
+    print(data[:5]) 
     
     # Load indices for splitting
-    idx_set = pd.read_table('all.idx', header=None)
+    print('loading indices')
+    idx_set = pd.read_table('all.idx', delim_whitespace=True, header=None)
     idx = np.array(idx_set)    
+    print('Splitting sets')
 
     # Training set
     rows, cols = np.where(idx == 1)
     train = data[rows]
     
     # qual set to predict on
-    rows, cols = np.where(idx == 2)
+    rows, cols = np.where(idx == 5)
     qual = data[rows]
 
     # Train! With K = 64 latent factors for now
     K = 64
     reg = 0.0
     eta = 0.03    
-    U, V, err = train_model(NUM_USERS, NUM_MOVIES, K, eta, reg, training)
+    print('starting to train')
+    U, V = train_model(NUM_USERS, NUM_MOVIES, K, eta, reg, train)
     
     # Write predictions to a file
     generate_predictions(U, V, qual)
