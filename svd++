@@ -1,0 +1,70 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include </Users/Johanna/Desktop/Eigen/Eigen/SVD>
+#include </Users/Johanna/Desktop/Eigen/Eigen/Dense>
+
+using namespace std;
+using namespace Eigen;
+using Eigen::MatrixXd;
+
+int NUM_USERS = 458293;
+int NUM_MOVIES = 17770;
+
+int N_EPOCHS = 1000;	// epochs
+float ALPHA = 0.01; 		// learning rate
+int K = 10; 			// latent factors
+
+MatrixXf P = MatrixXf::Random(NUM_USERS, NUM_MOVIES);
+MatrixXf Q = MatrixXf::Random(NUM_MOVIES, NUM_USERS);
+
+/* Train user features matrix P and movie features matrix Q. */
+int train() {	
+   // Read training data from "base.txt"
+   ifstream base;
+   base.open("base_toy.txt");
+   
+   for (int i = 0; ! base.eof(); i++) {
+      float u, m, t, r;
+      if (base >> u >> m >> t >> r) {
+          float err = r - P(u)*Q(i);
+          P(u) += ALPHA * err * Q(i);
+          Q(i) += ALPHA * err * P(i);
+      }
+   }
+   
+   return 0;
+}
+
+/* Predict unknown ratings in qual set. */
+int predict() {
+   ifstream qual_file ("qual_toy.txt");
+   ofstream pred_file;
+   pred_file.open("svd_predictions.txt");
+   if (qual_file.is_open()) {
+       float u, m, t;
+       while (qual_file >> u >> m >> t) {
+           float prediction = P(u)*Q(m);
+           printf("prediction: %.3f\n", prediction);
+           pred_file << to_string(prediction) + "\n";
+       }
+    }
+    qual_file.close();
+    pred_file.close(); 
+    return 0;
+}
+
+int main()
+{
+	printf("Begin training...\n");
+	train();
+	printf("Finished training...\n");
+	
+	printf("Begin predicting...\n");
+    predict(); 
+    printf("Finished predicting...\n");
+    
+    printf("All done!\n");
+    return 0;
+}
