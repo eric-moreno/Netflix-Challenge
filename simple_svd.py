@@ -4,9 +4,9 @@ import pandas as pd
 NUM_USERS = 458293;
 NUM_MOVIES = 17770;
 
-N_EPOCHS = 10000;		# epochs
-ALPHA = 0.01; 	# learning rate
-K = 64; 			# latent factors
+N_EPOCHS = 1000;		# epochs
+ALPHA = 0.01; 			# learning rate
+K = 64; 				# latent factors
 
 # Randomly initialize the user and item factors.
 p = np.random.normal(0, .1, (NUM_USERS, K))
@@ -20,7 +20,7 @@ def train():
 	base = open("base.txt", "r")
 	
 	# Optimization procedure
-	for _ in range(N_EPOCHS):
+	for n in range(N_EPOCHS):
 		for line in base:
 			u, i, t, r = [int(x) for x in line.split()]
 			err = r - np.dot(p[u], q[i])
@@ -43,7 +43,7 @@ def main():
 	print('Finished training...')
 	print('Begin predicting...')
 	predict()
-	print('Finished predicing...\n')
+	print('Finished predicting...\n')
 	
 	print('All done!')
     
