@@ -1,12 +1,10 @@
-// timeSVD.cpp : Defines the entry point for the console application.
-//
-
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <cstdio>
 #include <vector>
 #include <cmath>
+#include <stack>
 
 using namespace std;
 
@@ -15,7 +13,7 @@ const int movieCount = 17770;
 const int trainSize = 94362233;
 const double avgRating = 3.6033;
 const int k = 96;
-const int epochs = 120;
+const int epochs = 250;
 double l = 0.001;
 double reg = 0.02;
 double reg2 = 0.05;
@@ -31,8 +29,11 @@ double** Qi = new double*[movieCount];
 
 double* residuals; 
 double* residualError; 
-double* lResiduals;
-double* rResiduals;
+
+int probe_size = 1374739;
+int** probe; 
+double* probeResiduals;
+double* probeResidualError; 
 
 // Used for BASIC predictors 
 double w[] = { -474519146.8868519, -474519144.8076477, -474519142.7157141, -474519140.99534047, -474519138.9479845, 0.9639865159988403 };
@@ -43,8 +44,6 @@ void initialize_ratings()
 	ratings = new int*[num_ratings];
 	residuals = new double[num_ratings];
 	residualError = new double[num_ratings];
-	//lResiduals = new double[num_ratings];
-	//rResiduals = new double[num_ratings];
 
 	string filename = "E:\\Documents\\Caltech\\CS156\\base.dta";
 	ifstream file(filename);
@@ -65,8 +64,6 @@ void initialize_ratings()
 
 		residuals[index] = 0;
 		residualError[index] = 0;
-		//lResiduals[index] = 0;
-		//rResiduals[index] = 0;
 
 		index++;
 
@@ -79,6 +76,32 @@ void initialize_ratings()
 	}
 
 	file.close();
+
+	probe = new int*[probe_size];
+	probeResiduals = new double[probe_size];
+	probeResidualError = new double[probe_size];
+
+	filename = "E:\\Documents\\Caltech\\CS156\\probe.dta";
+	ifstream probefile(filename);
+	index = 0;
+
+	while (getline(probefile, input))
+	{
+		sscanf(input.c_str(), "%d %d %d %d", &user, &movie, &time, &rating);
+
+		probe[index] = new int[4];
+		probe[index][0] = user;
+		probe[index][1] = movie;
+		probe[index][2] = time;
+		probe[index][3] = rating;
+
+		probeResiduals[index] = 0;
+		probeResidualError[index] = 0;
+
+		index++;
+	}
+
+	probefile.close();
 };
 
 void initialize_averages()
@@ -191,7 +214,6 @@ double dot(double a[], double b[], int s, int f, double prev)
 	{
 		double curr = a[i] * b[i];
 		result += curr; 
-		//result = clamp(result, curr);
 	}
 	return result;
 };
@@ -208,7 +230,6 @@ double baseline(int user, int movie)
 double predict(int user, int movie)
 {
 	return baseline(user, movie) + dot(Pu[user], Qi[movie], 0, k, 0);
-	//return avgRating + Users[user][1] + Movies[movie][1] + dot(Pu[user], Qi[movie], 0, k, 0);
 };
 
 double testRMSE()
@@ -224,6 +245,20 @@ double testRMSE()
 	return RMSE;
 };
 
+double probeRMSE()
+{
+	double sum = 0;
+
+	for (int i = 0; i < probe_size; i++)
+	{
+		sum += pow(probeResidualError[i], 2);
+	}
+
+	double RMSE = sqrt(sum / probe_size);
+	return RMSE;
+};
+
+
 void calculate_residuals(int factor)
 {
 	for (int j = 0; j < num_ratings; j++)
@@ -233,31 +268,57 @@ void calculate_residuals(int factor)
 
 		if (factor == 0)
 		{
-			double res = predict(user, movie);
+			double res = clamp(0, predict(user, movie));
 			res += -(Pu[user][0] * Qi[movie][0]);
 			residuals[j] = res;
-			//lResiduals[j] = 0;
-			//rResiduals[j] = res; 
 		}
 		else
 		{
-			residuals[j] += (Pu[user][factor - 1] * Qi[movie][factor - 1]); // Add previous dot product
+			residuals[j] = clamp(residuals[j], (Pu[user][factor - 1] * Qi[movie][factor - 1])); // Add previous dot product
 			residuals[j] += -(Pu[user][factor] * Qi[movie][factor]); // Subtract next dot product 
-			//lResiduals[j] = clamp(lResiduals[j], Pu[user][factor - 1] * Qi[movie][factor - 1]);
-			//rResiduals[j] = dot(Pu[user], Qi[movie], factor + 1, k, 0);
+		}
+	}
+
+	for (int j = 0; j < probe_size; j++)
+	{
+		int user = probe[j][0] - 1;
+		int movie = probe[j][1] - 1;
+
+		if (factor == 0)
+		{
+			double res = clamp(0, predict(user, movie));
+			res += -(Pu[user][0] * Qi[movie][0]);
+			probeResiduals[j] = res;
+		}
+		else
+		{
+			probeResiduals[j] = clamp(probeResiduals[j], (Pu[user][factor - 1] * Qi[movie][factor - 1])); // Add previous dot product
+			probeResiduals[j] += -(Pu[user][factor] * Qi[movie][factor]); // Subtract next dot product 
 		}
 	}
 };
 
-double predict_with_residual(int user, int movie, int factor, int index)
+double predict_with_residual(int index, double next, bool test)
 {
-	/*double currdot = Pu[user][factor] * Qi[movie][factor];
-	double rres = rResiduals[index];
-	double lres = lResiduals[index];
-	return clamp(rres, clamp(lres, currdot)); */
+	double res;
 
-	double res = residuals[index];
-	return res + Pu[user][factor] * Qi[movie][factor];
+	if (test)
+		res = probeResiduals[index];
+	else
+		res = residuals[index];
+
+	return res + next; 
+};
+
+double vector_average(vector <double> a)
+{
+	double sum = 0;
+	for (int i = 0; i < a.size(); i++)
+	{
+		sum += a[i];
+	}
+
+	return sum / (a.size());
 };
 
 void train_svd()
@@ -267,40 +328,74 @@ void train_svd()
 		calculate_residuals(i);
 		std::cout << "Starting feature: " << i << std::endl;
 
-		double lastRMSE = 10000;
+		//double lastRMSE = 10000;
+
+		vector <double> last5;
+		vector <double> next5; 
 
 		for (int e = 0; e < epochs; e++)
 		{
+			// Train set
 			for (int j = 0; j < num_ratings; j++)
 			{
 				int user = ratings[j][0] - 1;
 				int movie = ratings[j][1] - 1;
-				int time = ratings[j][2];
 				int rating = ratings[j][3];
-
-				double prediction = predict_with_residual(user, movie, i, j);
-				double err = rating - prediction;
 
 				double uv = Pu[user][i];
 				double mv = Qi[movie][i];
+
+				double prediction = predict_with_residual(j, uv * mv, false);
+				double err = rating - prediction;
 
 				Pu[user][i] = uv + l * (err * mv - reg * uv);
 				Qi[movie][i] = mv + l * (err * uv - reg * mv);
 				residualError[j] = err; 
 			}
 
+			// Probe set 
+			for (int j = 0; j < probe_size; j++)
+			{
+				int user = probe[j][0] - 1;
+				int movie = probe[j][1] - 1;
+				int rating = probe[j][3];
+
+				double uv = Pu[user][i];
+				double mv = Qi[movie][i];
+
+				double prediction = predict_with_residual(j, uv * mv, true);
+				double err = rating - prediction;
+
+				probeResidualError[j] = err;
+			}
+
 			double currRMSE = testRMSE();
+			double testError = probeRMSE();
+
+			if (e < 5) last5.push_back(testError);
+			else if (e < 10) next5.push_back(testError);
+			else
+			{
+				//std::cout << "Last5: " << vector_average(last5) << std::endl;
+				//std::cout << "Next5: " << vector_average(next5) << std::endl;
+
+				if (vector_average(last5) < vector_average(next5)) break;
+				else
+				{
+					last5.erase(last5.begin());
+					last5.push_back(next5.back());
+					next5.erase(next5.begin());
+					next5.push_back(testError);
+				}	
+			}
 
 			std::cout << "Feature: " << i << ", Epoch: " << e << std::endl;
-			std::cout << "RMSE: " << testRMSE() << std::endl;
-
-			if (currRMSE > lastRMSE) break;
-
-			lastRMSE = currRMSE;
+			std::cout << "Probe RMSE: " << probeRMSE() << std::endl;
+			std::cout << "Train RMSE: " << testRMSE() << std::endl;
+			
 		}
 
 		std::cout << "Finished feature: " << i << std::endl;
-		std::cout << "RMSE: " << testRMSE() << std::endl; 
 	}
 };
 
@@ -338,7 +433,7 @@ int main()
 	std::cout << "Finished reading averages data..." << std::endl;
 
 	initialize_svd();
-	std::cout << "Initiliazed SVD..." << std::endl;
+	std::cout << "Initialized SVD..." << std::endl;
 
 
 	std::cout << "Training SVD... " << std::endl;
