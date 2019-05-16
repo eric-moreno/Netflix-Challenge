@@ -18,15 +18,16 @@ const int userCount = 458293;
 const int movieCount = 17770;
 
 const double avgRating = 3.6033;
-int k = 50;
-int epochs = 200;
+int k = 500;
+int epochs = 100;
 double l = 0.005;
-double reg = 0.007;
+double reg = 0.002;
 double reg2 = 0.005;
 
 const int maxRatings = 4000; 
 
 const int num_ratings = 98291669;
+//const int num_ratings = 99666408;
 vector<vector <int> > ratings(num_ratings);
 
 double* Bi = new double[movieCount];
@@ -42,14 +43,16 @@ double* trainErrors = new double[num_ratings];
 short** neighbors = new short*[userCount];
 double* Nu = new double[userCount];
 
+vector<vector <int> > userIndices(userCount);
+
 int probe_size = 1374739;
 int** probe;
 
-string basename = "E:\\Documents\\Caltech\\CS156\\base.dta";
+string basename = "E:\\Documents\\Caltech\\CS156\\umbase.dta";
 string qualname = "E:\\Documents\\Caltech\\CS156\\qual.dta";
 string probename = "E:\\Documents\\Caltech\\CS156\\probe.dta";
-string solname = "E:\\Documents\\Caltech\\CS156\\50\\solution";
-string probesolname = "E:\\Documents\\Caltech\\CS156\\50\\probesolution";
+string solname = "E:\\Documents\\Caltech\\CS156\\150\\solution";
+string probesolname = "E:\\Documents\\Caltech\\CS156\\150\\probesolution";
 
 void initialize_ratings()
 {
@@ -75,8 +78,8 @@ void initialize_ratings()
 
 		if (movie != prevMovie && movie % 1000 == 0)
 		{
-			std::cout << "Loading: " << movie << "/" << movieCount << std::endl;
-			prevMovie = movie;
+			//std::cout << "Loading: " << movie << "/" << movieCount << std::endl;
+			//prevMovie = movie;
 		}
 	}
 
@@ -112,6 +115,7 @@ void initialize_svd()
 		for (int j = 0; j < maxRatings; j++)
 			neighbors[i][j] = -1; 
 
+		userIndices[i] = vector<int>(2);
 
 		Bu[i] = rand() / RAND_MAX / sqrt(k);
 
@@ -188,6 +192,21 @@ void initialize_svd()
 		Nu[i] = pow(sqrt(count), -0.5);
 	}
 
+	// Initialize user indices
+	int currUser = 0; 
+	int base = 0; 
+	for (int i = 0; i < num_ratings; i++)
+	{
+		int user = ratings[i][0];
+
+		if (user != currUser)
+		{
+			userIndices[currUser][0] = base;
+			userIndices[currUser][1] = i;
+			currUser = user;
+			base = i; 
+		}
+	}
 
 };
 
@@ -245,7 +264,7 @@ int* getNeighbors(int user)
 	for (int i = 0; i < movieCount; i++)
 		implicit[i] = 0;
 
-	for (int i = 0; i < 3341; i++)
+	for (int i = 0; i < maxRatings; i++)
 		if (neighbors[user][i] == -1) break; 
 		else implicit[neighbors[user][i]] = 1; 
 
@@ -270,8 +289,8 @@ double* userVector(int user)
 	
 	multiplyVectorByScalar(sumYj, mag, k); 
 	 
-	double* p = Pu[user];
-	addVectors(sumYj, p, k); 
+	//double* p = Pu[user];
+	//addVectors(sumYj, p, k); 
 
 	return sumYj; 
 };
@@ -282,6 +301,8 @@ double predict(int user, int movie)
 	double bi = Bi[movie];
 
 	double* p = userVector(user);
+	double* pu = Pu[user];
+	addVectors(p, pu, k);
 
 	double product = dot(p, Qi[movie], 0, k, 0);
 
@@ -371,86 +392,137 @@ void shuffleRatings()
 {
 	std::random_device rd;
 	std::mt19937 g(rd());
-	std::shuffle(std::begin(ratings), std::end(ratings), g);
+	//std::shuffle(std::begin(ratings), std::end(ratings), g);
+	int user = 0;
+	int base = 0; 
+	auto begin = std::begin(ratings);
+
+	for (int i = 0; i < num_ratings; i++)
+	{
+		if (ratings[i][0] != user)
+		{
+			std::shuffle(begin + base, begin + i - 1, g);
+			base = i;
+			user++;
+		}
+	}
+
+	std::shuffle(std::begin(userIndices), std::end(userIndices), g);
+};
+
+
+void copyVector(double* a, double* b, int k)
+{
+	for (int i = 0; i < k; i++)
+	{
+		a[i] = b[i];
+	}
 };
 
 void train_svd()
 {
+	
 	for (int e = 0; e < epochs; e++)
 	{
 		std::cout << "Starting Epoch : " << e << std::endl;
-		std::cout << "Shuffling... " << std::endl;
 		
 		chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
+		shuffleRatings();
+		int currUser = -1;
+		double* uvectorc = new double[k];
 
-		for (int i = 0; i < num_ratings; i++)
+		//for (int i = 0; i < num_ratings; i++)
+		//{
+		for(int kl = 0; kl < userCount; kl++)
 		{
-			int user = ratings[i][0];
-			int movie = ratings[i][1];
-			int rating = ratings[i][2];
+			int start = userIndices[kl][0];
+			int end = userIndices[kl][1];
 			
-			// Replicate uvector calculation
-			double mag = Nu[user];
-
-			double* uvector = new double[k];
-
-			for (int i = 0; i < k; i++)
-				uvector[i] = 0;
-
-			for (int i = 0; i < maxRatings; i++)
+			for (int i = start; i < end; i++)
 			{
-				int curr = neighbors[user][i];
-				if (curr == -1) break;
-				else addVectors(uvector, Yj[curr], k);
+				int user = ratings[i][0];
+				int movie = ratings[i][1];
+				int rating = ratings[i][2];
+
+				bool recalculate = false;
+				//if (rand() % 100 == 0) recalculate = true;
+
+				// Replicate uvector calculation
+				double mag = Nu[user];
+
+				if (user != currUser)
+				{
+					/*for (int i = 0; i < k; i++)
+						uvector[i] = 0;
+
+					for (int i = 0; i < maxRatings; i++)
+					{
+						int curr = neighbors[user][i];
+						if (curr == -1) break;
+						else addVectors(uvector, Yj[curr], k);
+					}
+
+					multiplyVectorByScalar(uvector, mag, k);*/
+					delete uvectorc;
+					uvectorc = userVector(user);
+				}
+
+				double* pu = Pu[user];
+				double* uvector = new double[k];
+				copyVector(uvector, uvectorc, k);
+				addVectors(uvector, pu, k);
+
+				// Continue 
+
+				// Replicate prediction calculation 
+				double bu = Bu[user];
+				double bi = Bi[movie];
+
+				double product = dot(uvector, Qi[movie], 0, k, 0);
+				double prediction = avgRating + bu + bi + product;
+				// Continue 
+
+				double err = rating - prediction;
+				Bu[user] += 0.001 * (err - 0.015 * bu);
+				Bi[movie] += 0.001 * (err - 0.015 * bi);
+
+				double* qi = Qi[movie];
+
+				if (user != currUser || recalculate)
+				{
+					for (int j = 0; j < maxRatings; j++)
+					{
+						int index = neighbors[user][j];
+
+						if (index == -1) break;
+
+						for (int z = 0; z < k; z++)
+							Yj[index][z] += 0.001 * (err * mag * qi[z] - 0.01 * Yj[index][z]);
+					}
+
+					delete uvectorc;
+					uvectorc = userVector(user);
+
+					currUser = user;
+				}
+
+				for (int j = 0; j < k; j++)
+				{
+					pu[j] += 0.005 * (err * qi[j] - 0.015 * pu[j]);
+					qi[j] += 0.005 * (err * uvector[j] - 0.015 * qi[j]);
+				}
+
+				if (i % 10000000 == 0)
+				{
+					std::cout << "Pass:  " << i;
+					std::cout << ", Prediction:  " << prediction;
+					std::cout << ", Err:  " << err << std::endl;
+				}
+
+				trainErrors[i] = err;
+
+				delete uvector;
 			}
-
-			multiplyVectorByScalar(uvector, mag, k);
-
-			double* pu = Pu[user];
-			addVectors(uvector, pu, k);
-
-			// Continue 
-
-			// Replicate prediction calculation 
-			double bu = Bu[user];
-			double bi = Bi[movie];
-
-			double product = dot(uvector, Qi[movie], 0, k, 0);
-			double prediction = avgRating + bu + bi + product;
-			// Continue 
-			
-			double err = rating - prediction; 
-			Bu[user] += reg * (err - reg2 * bu);
-			Bi[movie] += reg * (err - reg2 * bi);
-
-			double* qi = Qi[movie];
-
-			for (int j = 0; j < maxRatings; j++)
-			{
-				int index = neighbors[user][j];
-
-				if (index == -1) break; 
-
-				for (int z = 0; z < k; z++)
-					Yj[index][z] += reg * (err * mag * qi[z] - reg2 * Yj[index][z]);
-			}
-
-			for (int j = 0; j < k; j++)
-			{
-				Pu[user][j] += reg * (err * qi[j] - reg2 * pu[j]);
-				Qi[movie][j] += reg * (err * uvector[j] - reg2 * qi[j]);
-			}
-
-			if (i % 1000000 == 0)
-			{
-				std::cout << "Pass:  " << i;
-				std::cout << ", Prediction:  " << prediction;
-				std::cout << ", Err:  " << err << std::endl;
-			}
-
-			trainErrors[i] = err; 
-
-			delete uvector; 
 		}
 
 		std::cout << "FINISHED EPOCH:  " << e << std::endl;
@@ -459,10 +531,18 @@ void train_svd()
 
 		chrono::high_resolution_clock::time_point t2 = chrono::high_resolution_clock::now();
 		auto duration = chrono::duration_cast<chrono::minutes>(t2 - t1).count();
-		cout << "Time elapsed: " << duration << endl;
+		//cout << "Time elapsed: " << duration << endl;
 
-		generate_qual(e);
-		generate_probesols(e);
+		//reg = reg * 0.9;
+		//reg2 = reg2 * 0.9;
+
+		delete uvectorc;
+
+		if (e % 5 == 0 && e > 4)
+		{
+			generate_qual(e);
+			generate_probesols(e);
+		}
 	}
 };
 
