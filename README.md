@@ -1,5 +1,14 @@
-# chardsdisciples
-156b
+Classwork for CS156b - Learning Systems (Caltech)
+====================================================================
+
+Introduction
+===================================================================
+Code used to get 7.6382% "above water" (above the original netflix classifier) with a test RMSE of 0.87873 contributing to an aggregate class performance of 8.9863% above water
+
+Code is grouped in the different architectures used (SVD, KNN, Baselines, etc.). Outputs from these different architectures were then blended in various ways (NNs, regressions, averages) using the Blending folder. 
+
+Descriptions (mostly used for us)
+====================================================================
 
 bellkor_baseline.py
   - reads training data from "base.npy" (see initialize_base.py)
