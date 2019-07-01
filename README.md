@@ -7,7 +7,7 @@ Code used to get 7.7223% "above water" (above the original netflix classifier) w
 
 Code is grouped in the different architectures used (SVD, KNN, Baselines, etc.). Outputs from these different architectures were then blended in various ways (NNs, regressions, averages) using the Blending folder. 
 
-Descriptions (mostly used for us)
+Descriptions (mostly used for our reference)
 ====================================================================
 
 bellkor_baseline.py
